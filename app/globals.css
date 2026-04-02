@@ -3,6 +3,8 @@
 :root {
   --background: #ffffff;
   --foreground: #171717;
+  --accent-primary: #C6AC8F; /* This is ochre/brown */
+  --accent-text: #EDC001; /* This is golden yellow */
 }
 
 @theme inline {
@@ -23,4 +25,45 @@ body {
   background: var(--background);
   color: var(--foreground);
   font-family: Arial, Helvetica, sans-serif;
+}
+select option {
+  background-color: var(--background);
+  color: var(--foreground);
+}
+/* For the glowing line effect */
+@keyframes subtleGlow {
+  0% {
+    text-shadow: 0 0 5px var(--accent-primary);
+  }
+  100% {
+    text-shadow: 0 0 15px var(--accent-primary);
+  }
+}
+
+.glass-panel {
+  background: rgba(34, 51, 59, 0.8);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid rgba(198, 172, 143, 0.2);
+}
+
+/* Custom scrollbar for content */
+.max-h-\[60vh\]::-webkit-scrollbar {
+  width: 6px;
+}
+
+.max-h-\[60vh\]::-webkit-scrollbar-track {
+  background: var(--bg-secondary);
+  border-radius: 3px;
+}
+
+.max-h-\[60vh\]::-webkit-scrollbar-thumb {
+  background: var(--accent-primary);
+  border-radius: 3px;
+}
+
+kbd {
+  font-family: monospace;
+  font-size: 0.875rem;
+  padding: 0.2rem 0.5rem;
 }

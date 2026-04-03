@@ -1,5 +1,14 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
+## When you Clone this Project
+first step
+
+```bash
+git clone repourl
+cd Cognitive-Language-Learning
+npm install
+```
+
 ## Getting Started
 
 First, run the development server:

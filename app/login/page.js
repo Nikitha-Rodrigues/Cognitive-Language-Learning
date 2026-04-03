@@ -22,7 +22,7 @@ export default function Login() {
 
   const handleSubmit = (e) => {
     e.preventDefault();
-    
+
     // Admin credentials check
     if (formData.username === "admin" && formData.password === "admin123") {
       alert("Login successful!");
@@ -33,12 +33,17 @@ export default function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-20">
-      <div className="max-w-md w-full relative">
-         <Link 
-            href="/" 
-            className="absolute -top-12 left-0 flex items-center gap-2 text-textSecondary hover:text-accent-primary transition-colors">
-            ← Back to Home
+    <div className="relative min-h-screen flex items-center justify-center px-4 py-20 bg-stars overflow-hidden">
+      <img 
+        src="/hero_blob.png" 
+        alt="Background" 
+        className="absolute inset-0 w-full h-full object-cover opacity-25 mix-blend-screen pointer-events-none" 
+      />
+      <div className="max-w-md w-full relative z-10">
+        <Link
+          href="/"
+          className="absolute -top-12 left-0 flex items-center gap-2 text-textSecondary hover:text-accent-primary transition-colors">
+          ← Back to Home
         </Link>
         <div className="glass-panel rounded-2xl p-8 border border-accent-primary/20">
           <h2 className="text-3xl font-bold text-center mb-2">Welcome Back</h2>
@@ -89,7 +94,7 @@ export default function Login() {
             )}
 
             <button
-              type="submit" href="/dashboard" className="w-full py-3 bg-accent-primary text-bg-primary font-semibold rounded-lg hover:bg-accent-hover transition-all duration-300 transform hover:scale-105 mt-6">
+              type="submit" className="w-full py-3 bg-white text-black font-semibold rounded-lg hover:bg-gray-200 transition-all duration-300 transform hover:scale-105 mt-6">
               Login
             </button>
           </form>
@@ -100,7 +105,7 @@ export default function Login() {
               Sign Up
             </Link>
           </p>
-          
+
           <div className="mt-4 pt-4 border-t border-accent-primary/20">
             <p className="text-textSecondary text-xs text-center">
               Demo Credentials: admin / admin123

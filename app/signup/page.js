@@ -125,11 +125,16 @@ export default function SignUp() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-20">
-      <div className="max-w-md w-full relative">
+    <div className="relative min-h-screen flex items-center justify-center px-4 py-20 bg-stars overflow-hidden">
+      <img 
+        src="/hero_blob.png" 
+        alt="Background" 
+        className="absolute inset-0 w-full h-full object-cover opacity-25 mix-blend-screen pointer-events-none" 
+      />
+      <div className="max-w-md w-full relative z-10">
          <Link 
             href="/" 
-            className="absolute -top-12 left-0 flex items-center gap-2 text-textSecondary hover:text-accent-primary transition-colors">
+            className="absolute -top-12 left-0 flex items-center gap-2 text-gray-400 hover:text-white transition-colors">
             ← Back to Home
         </Link>
         <div className="glass-panel rounded-2xl p-8 border border-accent-primary/20">
@@ -271,8 +276,8 @@ export default function SignUp() {
             </div>
 
             <button
-              type="submit" href="/login"
-              className="w-full py-3 bg-accent-primary text-bg-primary font-semibold rounded-lg hover:bg-accent-hover transition-all duration-300 transform hover:scale-105 mt-6">
+              type="submit"
+              className="w-full py-3 bg-white text-black font-semibold rounded-lg hover:bg-gray-200 transition-all duration-300 transform hover:scale-105 mt-6">
               Sign Up
             </button>
           </form>

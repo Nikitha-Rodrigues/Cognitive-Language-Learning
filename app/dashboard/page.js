@@ -162,8 +162,13 @@ Every word you read brings you closer to fluency.`;
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-center px-4 py-8">
-      <div className="max-w-5xl w-full mb-6 flex justify-between items-center">
+    <div className="relative min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-stars overflow-hidden">
+      <img 
+        src="/hero_blob.png" 
+        alt="Background" 
+        className="absolute inset-0 w-full h-full object-cover opacity-25 mix-blend-screen pointer-events-none z-0" 
+      />
+      <div className="max-w-5xl w-full mb-6 flex justify-between items-center relative z-10">
         <Link href="/" className="text-textSecondary hover:text-accent-primary transition-colors">
           ← Back to Home
         </Link>
@@ -198,7 +203,7 @@ Every word you read brings you closer to fluency.`;
         </div>
       </div>
 
-      <div className="max-w-5xl w-full">
+      <div className="max-w-5xl w-full relative z-10">
         <div className="glass-panel rounded-2xl p-8 border border-accent-primary/20 shadow-2xl">
           {isEditing ? (
             <textarea

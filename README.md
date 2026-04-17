@@ -1,32 +1,32 @@
 This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://github.com/vercel/next.js/tree/canary/packages/create-next-app).
 
-## When you Clone this Project
-first step after cloning
+##  Clone the Repository
 
 ```bash
-git clone repourl
+git clone <your-repo-url>
 cd Cognitive-Language-Learning
+```
+---
+## Install Dependencies
+
+```bash
 npm install
 ```
+---
+##  Environment Setup
 
-## Getting Started
+Create a `.env.local` file in the root directory and add your API key:
+```env
+SARVAM_API_KEY=your_api_key_here
+```
+---
+##  Run the Development Server
 
-First, run the development server:
-
+Start the application using any of the following commands:
 ```bash
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
-
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
-
-You can start editing the page by modifying `app/page.js`. The page auto-updates as you edit the file.
-
+---
 This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
 
 ## Learn More

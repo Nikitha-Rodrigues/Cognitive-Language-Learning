@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { Play, Pause, RotateCcw } from "lucide-react";
+import { Play, Pause, RotateCcw, Languages, Loader2 } from "lucide-react";
 
 export default function Dashboard() {
   const [content, setContent] = useState("");
@@ -14,6 +14,9 @@ export default function Dashboard() {
   const [startTime, setStartTime] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [hasContent, setHasContent] = useState(false);
+  const [targetLang, setTargetLang] = useState("hi-IN");
+  const [isTranslatingContent, setIsTranslatingContent] = useState(false);
+  const [translationError, setTranslationError] = useState("");
   const contentRef = useRef(null);
   const timerRef = useRef(null);
 
@@ -80,8 +83,49 @@ Every word you read brings you closer to fluency.`;
     setIsEditing(false);
     resetProgress();
     setWordTimings([]);
+    setTranslationError("");
     if (timerRef.current) clearTimeout(timerRef.current);
     document.querySelector('.content-viewport')?.classList.remove('blur-sm');
+  };
+
+  const translateContent = async () => {
+    if (!content || !content.trim()) {
+      alert("Please add content first using the Edit button");
+      return;
+    }
+
+    setIsTranslatingContent(true);
+    setTranslationError("");
+
+    try {
+      const response = await fetch("/api/translate", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          text: content,
+          target_lang: targetLang,
+        }),
+      });
+
+      const data = await response.json();
+
+      if (!response.ok) {
+        throw new Error(data.error || "Translation failed");
+      }
+
+      if (data.translatedText) {
+        setContent(data.translatedText);
+        setIsEditing(false);
+      }
+    } catch (error) {
+      console.error("Translation error:", error);
+      setTranslationError(error.message);
+      alert(`Translation Error: ${error.message}`);
+    } finally {
+      setIsTranslatingContent(false);
+    }
   };
 
   useEffect(() => {
@@ -193,9 +237,43 @@ Every word you read brings you closer to fluency.`;
           >
             <RotateCcw size={18} />
           </button>
+          <div className="flex items-center gap-2 px-1 bg-bg-secondary/50 border border-accent-primary/20 rounded-lg backdrop-blur-sm">
+            <Languages size={18} className="ml-2 text-accent-primary" />
+          <select
+            value={targetLang}
+            onChange={(e) => setTargetLang(e.target.value)}
+            className="bg-transparent text-textPrimary py-2 px-1 outline-none cursor-pointer text-sm"
+            disabled={isTranslating || isTranslatingContent}
+          >
+            <option value="hi-IN" className="bg-[#1a1a1a]">Hindi</option>
+            <option value="kn-IN" className="bg-[#1a1a1a]">Kannada</option>
+            <option value="ta-IN" className="bg-[#1a1a1a]">Tamil</option>
+            <option value="te-IN" className="bg-[#1a1a1a]">Telugu</option>
+            <option value="ml-IN" className="bg-[#1a1a1a]">Malayalam</option>
+            <option value="mr-IN" className="bg-[#1a1a1a]">Marathi</option>
+            <option value="bn-IN" className="bg-[#1a1a1a]">Bengali</option>
+            <option value="gu-IN" className="bg-[#1a1a1a]">Gujarati</option>
+            <option value="pa-IN" className="bg-[#1a1a1a]">Punjabi</option>
+          </select>
+          </div>
+          <button
+            onClick={translateContent}
+            disabled={isTranslating || !hasContent || isTranslatingContent}
+            className="flex items-center gap-2 px-4 py-2 border border-accent-primary rounded-lg hover:bg-accent-primary/10 transition-all disabled:opacity-50"
+          >
+            {isTranslatingContent ? (
+              <>
+                <Loader2 size={18} className="animate-spin" /> Translating...
+              </>
+            ) : (
+              <>
+                <Languages size={18} /> Translate
+              </>
+            )}
+          </button>
           <button
             onClick={() => setIsEditing(!isEditing)}
-            disabled={isTranslating}
+            disabled={isTranslating || isTranslatingContent}
             className="flex items-center gap-2 px-4 py-2 border border-accent-primary rounded-lg hover:bg-accent-primary/10 transition-all disabled:opacity-50"
           >
              Edit

@@ -247,13 +247,6 @@ Every word you read brings you closer to fluency.`;
           >
             <option value="hi-IN" className="bg-[#1a1a1a]">Hindi</option>
             <option value="kn-IN" className="bg-[#1a1a1a]">Kannada</option>
-            <option value="ta-IN" className="bg-[#1a1a1a]">Tamil</option>
-            <option value="te-IN" className="bg-[#1a1a1a]">Telugu</option>
-            <option value="ml-IN" className="bg-[#1a1a1a]">Malayalam</option>
-            <option value="mr-IN" className="bg-[#1a1a1a]">Marathi</option>
-            <option value="bn-IN" className="bg-[#1a1a1a]">Bengali</option>
-            <option value="gu-IN" className="bg-[#1a1a1a]">Gujarati</option>
-            <option value="pa-IN" className="bg-[#1a1a1a]">Punjabi</option>
           </select>
           </div>
           <button

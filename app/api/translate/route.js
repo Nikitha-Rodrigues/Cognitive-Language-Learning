@@ -14,7 +14,7 @@ export async function POST(request) {
         target_language_code: target_lang,
         speaker_gender: "Female",
         mode: "formal",
-        model: "mayura:v1",
+        model: "sarvam-translate:v1",
         enable_preprocessing: true,
       }),
     });

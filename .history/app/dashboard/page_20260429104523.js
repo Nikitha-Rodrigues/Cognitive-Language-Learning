@@ -367,7 +367,7 @@ Every word you read brings you closer to fluency.`;
             <span
               key={wordIdx}
               style={{
-                color: isCurrentWord && isSelected ? "#FFD700" : isSelected ? "#d63384" : isCurrentWord ? "var(--accent-text)" : "var(--text-primary)",
+                color: isSelected ? "#d63384" : isCurrentWord ? "var(--accent-text)" : "var(--text-primary)",
                 fontWeight: isCurrentWord || isSelected ? "700" : "400",
                 transition: "all 0.2s ease"
               }}
@@ -583,23 +583,21 @@ Every word you read brings you closer to fluency.`;
       </div>
 
       {showFunGame && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
-          <div className="max-w-2xl w-full p-8 bg-gradient-to-r from-violet-950/95 via-fuchsia-950/95 to-pink-950/95 border border-pink-500/50 rounded-3xl shadow-2xl backdrop-blur-sm">
-            <h3 className="text-3xl font-bold text-white mb-4 text-center">🎮 Fun Game Break</h3>
-            <p className="text-textSecondary mb-6 text-center">
-              You were distracted, so the demo paused. Here's a joke to keep you entertained:
-            </p>
-            <div className="rounded-2xl bg-bg-secondary/80 p-6 border border-white/10 mb-6 text-center">
-              <p className="text-textPrimary font-semibold text-lg">Why did the word go to therapy?</p>
-              <p className="mt-3 text-textSecondary text-base">Because it had too many issues with its letters! 😄</p>
-            </div>
-            <button
-              onClick={resumeFromFunGame}
-              className="w-full px-5 py-3 bg-fuchsia-500 text-white rounded-full font-semibold hover:bg-fuchsia-400 transition-all"
-            >
-              Resume Demo
-            </button>
+        <div className="max-w-5xl w-full mt-6 p-6 bg-gradient-to-r from-violet-950/10 via-fuchsia-950/10 to-pink-950/10 border border-pink-500/20 rounded-3xl shadow-2xl relative z-10">
+          <h3 className="text-2xl font-bold text-white mb-3">Fun game break</h3>
+          <p className="text-textSecondary mb-4">
+            You were distracted, so the demo paused and a quick word game started. When you are ready, resume the learning flow.
+          </p>
+          <div className="rounded-2xl bg-bg-secondary/80 p-4 border border-white/10 mb-4">
+            <p className="text-textPrimary font-semibold">Spot the word:</p>
+            <p className="mt-2 text-textSecondary">Can you find a word in the text that starts and ends with the same letter?</p>
           </div>
+          <button
+            onClick={resumeFromFunGame}
+            className="px-5 py-3 bg-fuchsia-500 text-white rounded-full font-semibold hover:bg-fuchsia-400 transition-all"
+          >
+            Resume Demo
+          </button>
         </div>
       )}
 

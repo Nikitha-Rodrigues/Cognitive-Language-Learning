@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Play, Pause, RotateCcw, Languages, Loader2 } from "lucide-react";
 import MicroSurvey from "./microsurveys";
-import selectWords  from "./selectWord";
 
 export default function Dashboard() {
   const [content, setContent] = useState("");
@@ -53,13 +52,32 @@ export default function Dashboard() {
     }, {});
   };
 
+  const fetchSelectedWords = async (text, percentage) => {
+    const response = await fetch("/api/translate/selectWord", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ text, percentage }),
+    });
+
+    const data = await response.json();
+    if (!response.ok) {
+      throw new Error(data.error || "Unable to select words");
+    }
+
+    if (!Array.isArray(data.selectedWords)) {
+      throw new Error("Groq did not return the expected array format");
+    }
+
+    return data.selectedWords;
+  };
+
   const selectWordsForLevel = async (text, levelIndex) => {
     setIsSelectingWords(true);
     setSelectionMessage("Adjusting translation percentage. This might take some time");
     setShowFunGame(false);
 
     try {
-      const words = selectWords(text, percentageLevels[levelIndex]);
+      const words = await fetchSelectedWords(text, percentageLevels[levelIndex]);
       setSelectedWords(words);
       setSelectedLevelIndex(levelIndex);
       return words;
@@ -162,11 +180,11 @@ Every word you read brings you closer to fluency.`;
       return;
     }
 
-    const entry = recordEvent("complete");
-    pushEvent(entry);
+    const entry = recordCurrentWordTiming();
+    updateWordTimings(entry);
     setIsTranslating(false);
     setStartTime(null);
-    console.log("Events:", events);
+    console.log("Word Timings:", [...wordTimings, entry].filter(e => e)); // approximate
     alert(`🎉 Complete! Check console for detailed timings.`);
   };
 
@@ -236,7 +254,7 @@ Every word you read brings you closer to fluency.`;
     setSelectionMessage("Adjusting translation percentage. This might take some time");
 
     try {
-      const words = selectWords(demoText, 10);
+      const words = await fetchSelectedWords(demoText, 10);
       setSelectedWords(words);
       setIsTranslating(true);
       setStartTime(Date.now());
@@ -335,6 +353,7 @@ Every word you read brings you closer to fluency.`;
       microSurveyTimerRef.current = setInterval(() => {
         setShowMicroSurvey(true);
         setIsTranslating(false);
+        document.querySelector('.content-viewport')?.classList.add('blur-sm');
       }, 10000);
     } else {
       if (microSurveyTimerRef.current) {
@@ -367,7 +386,7 @@ Every word you read brings you closer to fluency.`;
             <span
               key={wordIdx}
               style={{
-                color: isCurrentWord && isSelected ? "#FFD700" : isSelected ? "#d63384" : isCurrentWord ? "var(--accent-text)" : "var(--text-primary)",
+                color: isSelected ? "#d63384" : isCurrentWord ? "var(--accent-text)" : "var(--text-primary)",
                 fontWeight: isCurrentWord || isSelected ? "700" : "400",
                 transition: "all 0.2s ease"
               }}
@@ -581,28 +600,6 @@ Every word you read brings you closer to fluency.`;
           </div>
         )}
       </div>
-
-      {showFunGame && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
-          <div className="max-w-2xl w-full p-8 bg-gradient-to-r from-violet-950/95 via-fuchsia-950/95 to-pink-950/95 border border-pink-500/50 rounded-3xl shadow-2xl backdrop-blur-sm">
-            <h3 className="text-3xl font-bold text-white mb-4 text-center">🎮 Fun Game Break</h3>
-            <p className="text-textSecondary mb-6 text-center">
-              You were distracted, so the demo paused. Here's a joke to keep you entertained:
-            </p>
-            <div className="rounded-2xl bg-bg-secondary/80 p-6 border border-white/10 mb-6 text-center">
-              <p className="text-textPrimary font-semibold text-lg">Why did the word go to therapy?</p>
-              <p className="mt-3 text-textSecondary text-base">Because it had too many issues with its letters! 😄</p>
-            </div>
-            <button
-              onClick={resumeFromFunGame}
-              className="w-full px-5 py-3 bg-fuchsia-500 text-white rounded-full font-semibold hover:bg-fuchsia-400 transition-all"
-            >
-              Resume Demo
-            </button>
-          </div>
-        </div>
-      )}
-
       <MicroSurvey isVisible={showMicroSurvey} onResponse={handleMicroSurveyResponse} />
     </div>
   );

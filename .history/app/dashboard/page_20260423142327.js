@@ -3,8 +3,6 @@
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Play, Pause, RotateCcw, Languages, Loader2 } from "lucide-react";
-import MicroSurvey from "./microsurveys";
-import selectWords  from "./selectWord";
 
 export default function Dashboard() {
   const [content, setContent] = useState("");
@@ -12,85 +10,15 @@ export default function Dashboard() {
   const [currentLineIndex, setCurrentLineIndex] = useState(0);
   const [currentWordIndex, setCurrentWordIndex] = useState(0);
   const [lines, setLines] = useState([]);
-  //const [wordTimings, setWordTimings] = useState([]);---------------------------------------------------------------------------------------------
+  const [wordTimings, setWordTimings] = useState([]);
   const [startTime, setStartTime] = useState(null);
   const [isEditing, setIsEditing] = useState(false);
   const [hasContent, setHasContent] = useState(false);
   const [targetLang, setTargetLang] = useState("hi-IN");
   const [isTranslatingContent, setIsTranslatingContent] = useState(false);
   const [translationError, setTranslationError] = useState("");
-  const [selectedWords, setSelectedWords] = useState([]);
-  const [selectedLevelIndex, setSelectedLevelIndex] = useState(1);
-  const [isSelectingWords, setIsSelectingWords] = useState(false);
-  const [selectionMessage, setSelectionMessage] = useState("");
-  const [showFunGame, setShowFunGame] = useState(false);
   const contentRef = useRef(null);
   const timerRef = useRef(null);
-  const microSurveyTimerRef = useRef(null);
-  const [showMicroSurvey, setShowMicroSurvey] = useState(false);
-  const [microSurveyResponses, setMicroSurveyResponses] = useState([]);
-  const [isPausedManually, setIsPausedManually] = useState(false);
-  const [events, setEvents] = useState([]); // replaces wordTimings for ML
-  const [isDemoMode, setIsDemoMode] = useState(false);
-  const [isFinished, setIsFinished] = useState(false);
-
-  const percentageLevels = [5, 10, 20, 35, 50, 75, 85, 100];
-  const currentPercentage = percentageLevels[selectedLevelIndex] || 10;
-  const isTextBlurred = isSelectingWords || showMicroSurvey || isPausedManually || !isTranslating;
-
-  const normalizeToken = (token) =>
-    token
-      .replace(/^[^A-Za-z0-9']+|[^A-Za-z0-9']+$/g, "")
-      .trim()
-      .toLowerCase();
-
-  const buildSelectedWordMap = () => {
-    return selectedWords.reduce((map, word) => {
-      const normalized = normalizeToken(word);
-      if (!normalized) return map;
-      map[normalized] = (map[normalized] || 0) + 1;
-      return map;
-    }, {});
-  };
-
-  const selectWordsForLevel = async (text, levelIndex) => {
-    setIsSelectingWords(true);
-    setSelectionMessage("Adjusting translation percentage. This might take some time");
-    setShowFunGame(false);
-
-    try {
-      const words = selectWords(text, percentageLevels[levelIndex]);
-      setSelectedWords(words);
-      setSelectedLevelIndex(levelIndex);
-      return words;
-    } finally {
-      setIsSelectingWords(false);
-      setSelectionMessage("");
-    }
-  };
-
-  const getNextLevelIndex = (response) => {
-    if (response === "mastery") {
-      return Math.min(selectedLevelIndex + 1, percentageLevels.length - 1);
-    }
-    if (response === "focused") {
-      return selectedLevelIndex;
-    }
-    if (response === "frustrated") {
-      return Math.max(selectedLevelIndex - 1, 0);
-    }
-    if (response === "overloaded") {
-      return Math.max(selectedLevelIndex - 2, 0);
-    }
-    return selectedLevelIndex;
-  };
-
-  const resumeFromFunGame = () => {
-    setShowFunGame(false);
-    setIsPausedManually(false);
-    setIsTranslating(true);
-    setStartTime(Date.now());
-  };
 
   const sampleContent = `The quick brown fox jumps over the lazy dog. 
 This is a beautiful day to learn a new language.
@@ -112,6 +40,7 @@ Every word you read brings you closer to fluency.`;
   const resetProgress = () => {
     setCurrentLineIndex(0);
     setCurrentWordIndex(0);
+    setWordTimings([]);
     setStartTime(null);
   };
 
@@ -119,41 +48,48 @@ Every word you read brings you closer to fluency.`;
     if (isEditing) {
       setIsEditing(false);
     }
-
+    
     if (!content || !content.trim()) {
       alert("Please add content first using the Edit button");
       return;
     }
-
+    
+    document.querySelector('.content-viewport')?.classList.remove('blur-sm');
     setIsTranslating(true);
-    setIsPausedManually(false);
     setStartTime(Date.now());
   };
 
-  const recordEvent = (direction) => {
-  if (!startTime || !lines[currentLineIndex]) return null;
-
-  const words = lines[currentLineIndex].trim().split(/\s+/);
-  const currentWord = words[currentWordIndex] ?? "";
-
-  const wordId = `${currentLineIndex}-${currentWordIndex}`;
-  const endTime = Date.now();
-  const duration = endTime - startTime;
-
-  return {
-    wordId,
-    word: currentWord,
-    startTime,
-    endTime,
-    duration,
-    direction,
+  const recordCurrentWordTiming = () => {
+    if (!startTime || !lines[currentLineIndex]) return null;
+    const words = lines[currentLineIndex].split(" ").filter(Boolean);
+    const currentWord = words[currentWordIndex] ?? "";
+    const timeMs = Date.now() - startTime;
+    const entry = {
+      line: currentLineIndex,
+      word: currentWordIndex,
+      word: currentWord,
+      timeMs,
+    };
+    return entry;
   };
-};
 
-  const pushEvent = (event) => {
-  if (!event) return;
-  setEvents(prev => [...prev, event]);
-};
+  const updateWordTimings = (entry) => {
+    if (!entry) return;
+    setWordTimings(prev => {
+      const existingIndex = prev.findIndex(
+        (item) => item.line === entry.line && item.word === entry.word
+      );
+      if (existingIndex !== -1) {
+        // Update existing entry
+        const updated = [...prev];
+        updated[existingIndex] = entry;
+        return updated;
+      } else {
+        // Add new entry
+        return [...prev, entry];
+      }
+    });
+  };
 
   const completeTranslating = () => {
     const currentLine = lines[currentLineIndex];
@@ -162,21 +98,21 @@ Every word you read brings you closer to fluency.`;
       return;
     }
 
-    const entry = recordEvent("complete");
-    pushEvent(entry);
+    const entry = recordCurrentWordTiming();
+    updateWordTimings(entry);
     setIsTranslating(false);
     setStartTime(null);
-    console.log("Events:", events);
+    console.log("Word Timings:", [...wordTimings, entry].filter(e => e)); // approximate
     alert(`🎉 Complete! Check console for detailed timings.`);
   };
 
   const advanceWord = () => {
     if (!isTranslating || !lines.length) return;
     const currentLine = lines[currentLineIndex];
-    const words = currentLine.trim().split(/\s+/);
-  
-    const event = recordEvent("forward");
-    pushEvent(event);
+    const words = currentLine.split(" ").filter(Boolean);
+
+    const entry = recordCurrentWordTiming();
+    updateWordTimings(entry);
 
     if (currentWordIndex + 1 < words.length) {
       setCurrentWordIndex(currentWordIndex + 1);
@@ -186,44 +122,31 @@ Every word you read brings you closer to fluency.`;
       setCurrentWordIndex(0);
       setStartTime(Date.now());
     } else {
-      if (isDemoMode && !isFinished) {
-      // loop back to start
-        setCurrentLineIndex(0);
-        setCurrentWordIndex(0);
-        setStartTime(Date.now());
-      } else {
-        completeTranslating();
-      }
+      completeTranslating();
     }
   };
 
   const goBackWord = () => {
     if (!isTranslating || !lines.length) return;
-    const event = recordEvent("backward");
-    pushEvent(event);
+
+    recordCurrentWordTiming();
 
     if (currentWordIndex > 0) {
       setCurrentWordIndex(currentWordIndex - 1);
       setStartTime(Date.now());
     } else if (currentLineIndex > 0) {
-      const previousLineWords = lines[currentLineIndex - 1].trim().split(/\s+/);
+      const previousLineWords = lines[currentLineIndex - 1].split(" ").filter(Boolean);
       setCurrentLineIndex(currentLineIndex - 1);
       setCurrentWordIndex(previousLineWords.length - 1);
       setStartTime(Date.now());
     }
   };
 
-  const startDemo = async () => {
+  const startDemo = () => {
+    // #for temporary demo only
     if (isEditing) {
       setIsEditing(false);
     }
-    setIsDemoMode(true);
-    setIsFinished(false);
-    setEvents([]);
-    setMicroSurveyResponses([]);
-    setShowMicroSurvey(false);
-    setIsPausedManually(false);
-    setShowFunGame(false);
 
     const demoText = content && content.trim() ? content : sampleContent;
     setContent(demoText);
@@ -231,46 +154,24 @@ Every word you read brings you closer to fluency.`;
     setLines(parsedLines);
     setHasContent(true);
     resetProgress();
-    setSelectedLevelIndex(1);
-    setIsSelectingWords(true);
-    setSelectionMessage("Adjusting translation percentage. This might take some time");
-
-    try {
-      const words = selectWords(demoText, 10);
-      setSelectedWords(words);
-      setIsTranslating(true);
-      setStartTime(Date.now());
-    } catch (error) {
-      console.error("SelectWord error:", error);
-      alert(`Error selecting words: ${error.message}`);
-    } finally {
-      setIsSelectingWords(false);
-      setSelectionMessage("");
-    }
+    document.querySelector('.content-viewport')?.classList.remove('blur-sm');
+    setIsTranslating(true);
+    setStartTime(Date.now());
   };
 
   const pauseTranslating = () => {
     setIsTranslating(false);
-    setIsPausedManually(true);
+    document.querySelector('.content-viewport')?.classList.add('blur-sm');
   };
 
   const resetTranslating = () => {
     setIsTranslating(false);
     setIsEditing(false);
     resetProgress();
+    setWordTimings([]);
     setTranslationError("");
-
-    setEvents([]);
-    setIsDemoMode(false);
-    setIsFinished(false);
-    setMicroSurveyResponses([]);
-    setShowMicroSurvey(false);
-    setIsPausedManually(false);
-    setIsSelectingWords(false);
-    setSelectedWords([]);
-    setSelectionMessage("");
-
     if (timerRef.current) clearTimeout(timerRef.current);
+    document.querySelector('.content-viewport')?.classList.remove('blur-sm');
   };
 
   const translateContent = async () => {
@@ -328,47 +229,24 @@ Every word you read brings you closer to fluency.`;
     
     window.addEventListener("keydown", handleKeyPress);
     return () => window.removeEventListener("keydown", handleKeyPress);
-  }, [isTranslating, currentLineIndex, currentWordIndex, lines, startTime]);
-
-  useEffect(() => {
-    if (isTranslating && !isFinished && !showMicroSurvey && !isPausedManually) {
-      microSurveyTimerRef.current = setInterval(() => {
-        setShowMicroSurvey(true);
-        setIsTranslating(false);
-      }, 10000);
-    } else {
-      if (microSurveyTimerRef.current) {
-        clearInterval(microSurveyTimerRef.current);
-      }
-    }
-    return () => {
-      if (microSurveyTimerRef.current) {
-        clearInterval(microSurveyTimerRef.current);
-      }
-    };
-  }, [isTranslating, isFinished, showMicroSurvey, isPausedManually]);
+  }, [isTranslating, currentLineIndex, currentWordIndex, lines, startTime, wordTimings]);
 
   const renderLine = (line, lineIdx) => {
-    const selectedWordMap = buildSelectedWordMap();
-    const usedWordCounts = {};
+    if (!isTranslating || lineIdx !== currentLineIndex) {
+      return <span className="text-textPrimary">{line}</span>;
+    }
+    
     const words = line.split(" ");
-
     return (
       <span className="inline-block">
         {words.map((word, wordIdx) => {
-          const normalized = normalizeToken(word);
-          const usedCount = usedWordCounts[normalized] || 0;
-          const selectedCount = selectedWordMap[normalized] || 0;
-          const isSelected = normalized && usedCount < selectedCount;
-          usedWordCounts[normalized] = usedCount + 1;
-          const isCurrentWord = isTranslating && lineIdx === currentLineIndex && wordIdx === currentWordIndex;
-
+          const isCurrentWord = wordIdx === currentWordIndex;
           return (
             <span
               key={wordIdx}
               style={{
-                color: isCurrentWord && isSelected ? "#FFD700" : isSelected ? "#d63384" : isCurrentWord ? "var(--accent-text)" : "var(--text-primary)",
-                fontWeight: isCurrentWord || isSelected ? "700" : "400",
+                color: isCurrentWord ? "var(--accent-text)" : "var(--text-primary)",
+                fontWeight: isCurrentWord ? "bold" : "normal",
                 transition: "all 0.2s ease"
               }}
             >
@@ -380,47 +258,9 @@ Every word you read brings you closer to fluency.`;
     );
   };
 
-  const handleMicroSurveyResponse = async (response) => {
-    setMicroSurveyResponses(prev => [...prev, { response, timestamp: Date.now() }]);
-    setShowMicroSurvey(false);
-
-    if (response === "distracted") {
-      setShowFunGame(true);
-      setIsTranslating(false);
-      setIsPausedManually(true);
-      return;
-    }
-
-    const nextLevel = getNextLevelIndex(response);
-    if (nextLevel !== selectedLevelIndex) {
-      setIsTranslating(false);
-      setIsPausedManually(true);
-      setIsSelectingWords(true);
-      setSelectionMessage("Adjusting translation percentage. This might take some time");
-
-      try {
-        await selectWordsForLevel(content, nextLevel);
-      } catch (error) {
-        console.error("Level adjustment error:", error);
-        alert(`Unable to adjust level: ${error.message}`);
-      } finally {
-        setIsSelectingWords(false);
-        setSelectionMessage("");
-        setIsPausedManually(false);
-        setIsTranslating(true);
-        setStartTime(Date.now());
-      }
-      return;
-    }
-
-    setIsPausedManually(false);
-    setIsTranslating(true);
-    setStartTime(Date.now());
-  };
-
-  const totalWords = lines.reduce((sum, line) => sum + line.trim().split(/\s+/).length, 0);
+  const totalWords = lines.reduce((sum, line) => sum + line.split(" ").filter(Boolean).length, 0);
   const currentWordPosition = isTranslating
-    ? lines.slice(0, currentLineIndex).reduce((sum, line) => sum + line.trim().split(/\s+/).length, 0) + currentWordIndex + 1
+    ? lines.slice(0, currentLineIndex).reduce((sum, line) => sum + line.split(" ").filter(Boolean).length, 0) + currentWordIndex + 1
     : 0;
 
   return (
@@ -451,24 +291,11 @@ Every word you read brings you closer to fluency.`;
             <Play size={18} /> Start Demo
           </button>
           <button
-            onClick={() => {
-              setIsFinished(true);
-              setIsTranslating(false);
-              setIsPausedManually(false);
-              console.log("Final Events:", events);
-              console.log("Microsurvey Responses:", microSurveyResponses);
-            }}
-            disabled={!isDemoMode || isFinished}
-            className="flex items-center gap-2 px-4 py-2 border border-green-500 rounded-lg hover:bg-green-500/10 transition-all disabled:opacity-50"
-          >
-            Finish Demo
-          </button>
-          <button
-            onClick={isTranslating ? pauseTranslating : startTranslating}
-            disabled={!hasContent}
+            onClick={pauseTranslating}
+            disabled={!isTranslating}
             className="flex items-center gap-2 px-4 py-2 border border-accent-primary rounded-lg hover:bg-accent-primary/10 transition-all disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {isTranslating ? <Pause size={18} /> : <Play size={18} />}
+            <Pause size={18} />
           </button>
           <button
             onClick={resetTranslating}
@@ -516,9 +343,6 @@ Every word you read brings you closer to fluency.`;
         {hasContent && (
           <>
             <span>Total words: <strong>{totalWords}</strong></span>
-            {isDemoMode && (
-              <span>Current selection: <strong>{currentPercentage}%</strong></span>
-            )}
             {isTranslating && <span>Current word: <strong>{currentWordPosition}/{totalWords}</strong></span>}
           </>
         )}
@@ -539,35 +363,28 @@ Every word you read brings you closer to fluency.`;
               <p className="text-textSecondary/40 text-sm">Click the Edit button above to paste your content</p>
             </div>
           ) : (
-            <div className="relative">
-              <div 
-                ref={contentRef}
-                className={`content-viewport space-y-4 min-h-[400px] max-h-[60vh] overflow-y-auto transition-all duration-300 ${isTextBlurred ? 'blur-sm' : ''}`}
-                style={{
-                  fontFamily: "var(--font-sans)",
-                  lineHeight: "1.8"
-                }}
-              >
-                {lines.map((line, idx) => (
-                  <div
-                    key={idx}
-                    className={`transition-all duration-300 ${
-                      idx === currentLineIndex && isTranslating
-                        ? "text-xl md:text-2xl font-medium"
-                        : idx < currentLineIndex
-                        ? "text-textSecondary/30"
-                        : "text-textSecondary/50"
-                    }`}
-                  >
-                    {renderLine(line, idx)}
-                  </div>
-                ))}
-              </div>
-              {isSelectingWords && (
-                <div className="pointer-events-none absolute inset-0 flex items-center justify-center rounded-2xl bg-black/40 text-white text-lg font-semibold text-center p-6">
-                  {selectionMessage || "Adjusting translation percentage. This might take some time"}
+            <div 
+              ref={contentRef}
+              className={`content-viewport space-y-4 min-h-[400px] max-h-[60vh] overflow-y-auto transition-all duration-300 ${!isTranslating ? 'blur-sm' : ''}`}
+              style={{
+                fontFamily: "var(--font-sans)",
+                lineHeight: "1.8"
+              }}
+            >
+              {lines.map((line, idx) => (
+                <div
+                  key={idx}
+                  className={`transition-all duration-300 ${
+                    idx === currentLineIndex && isTranslating
+                      ? "text-xl md:text-2xl font-medium"
+                      : idx < currentLineIndex
+                      ? "text-textSecondary/30"
+                      : "text-textSecondary/50"
+                  }`}
+                >
+                  {renderLine(line, idx)}
                 </div>
-              )}
+              ))}
             </div>
           )}
         </div>
@@ -581,29 +398,6 @@ Every word you read brings you closer to fluency.`;
           </div>
         )}
       </div>
-
-      {showFunGame && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
-          <div className="max-w-2xl w-full p-8 bg-gradient-to-r from-violet-950/95 via-fuchsia-950/95 to-pink-950/95 border border-pink-500/50 rounded-3xl shadow-2xl backdrop-blur-sm">
-            <h3 className="text-3xl font-bold text-white mb-4 text-center">🎮 Fun Game Break</h3>
-            <p className="text-textSecondary mb-6 text-center">
-              You were distracted, so the demo paused. Here's a joke to keep you entertained:
-            </p>
-            <div className="rounded-2xl bg-bg-secondary/80 p-6 border border-white/10 mb-6 text-center">
-              <p className="text-textPrimary font-semibold text-lg">Why did the word go to therapy?</p>
-              <p className="mt-3 text-textSecondary text-base">Because it had too many issues with its letters! 😄</p>
-            </div>
-            <button
-              onClick={resumeFromFunGame}
-              className="w-full px-5 py-3 bg-fuchsia-500 text-white rounded-full font-semibold hover:bg-fuchsia-400 transition-all"
-            >
-              Resume Demo
-            </button>
-          </div>
-        </div>
-      )}
-
-      <MicroSurvey isVisible={showMicroSurvey} onResponse={handleMicroSurveyResponse} />
     </div>
   );
 }

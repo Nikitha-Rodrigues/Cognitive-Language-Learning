@@ -36,17 +36,25 @@ export async function POST(request) {
     const fileName = `session_${Date.now()}.csv`;
     let blobUrl = null;
 
+    console.log(`Preparing to save session: ${fileName}`);
+    console.log(`Events received: ${events.length}`);
+    console.log(`CSV Length: ${csvContent.length} characters`);
+
     // 1. Attempt to save to Vercel Blob (if token is present)
     if (process.env.BLOB_READ_WRITE_TOKEN) {
-      try {
-        const blob = await put(`cognitive_data/${fileName}`, csvContent, {
-          access: 'private',
-          contentType: 'text/csv',
-        });
-        blobUrl = blob.url;
-        console.log(`Session saved to Vercel Blob: ${blobUrl}`);
-      } catch (blobError) {
-        console.error("Vercel Blob upload failed:", blobError);
+      if (csvContent.length < 10) {
+        console.error("Aborting Blob upload: csvContent is too short!");
+      } else {
+        try {
+          const blob = await put(`cognitive_data/${fileName}`, csvContent, {
+            access: 'private',
+            contentType: 'text/csv',
+          });
+          blobUrl = blob.url;
+          console.log(`Session saved to Vercel Blob: ${blobUrl}`);
+        } catch (blobError) {
+          console.error("Vercel Blob upload failed:", blobError);
+        }
       }
     }
 

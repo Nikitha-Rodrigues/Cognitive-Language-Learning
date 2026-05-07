@@ -46,9 +46,14 @@ export async function POST(request) {
         console.error("Aborting Blob upload: csvContent is too short!");
       } else {
         try {
-          const blob = await put(`cognitive_data/${fileName}`, csvContent, {
+          // Convert to Buffer to ensure correct byte encoding on Vercel's runtime
+          const csvBuffer = Buffer.from(csvContent, 'utf-8');
+          console.log(`Buffer size before upload: ${csvBuffer.length} bytes`);
+
+          const blob = await put(`cognitive_data/${fileName}`, csvBuffer, {
             access: 'private',
             contentType: 'text/csv',
+            addRandomSuffix: false,
           });
           blobUrl = blob.url;
           console.log(`Session saved to Vercel Blob: ${blobUrl}`);

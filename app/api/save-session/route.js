@@ -51,7 +51,7 @@ export async function POST(request) {
           console.log(`Buffer size before upload: ${csvBuffer.length} bytes`);
 
           const blob = await put(`cognitive_data/${fileName}`, csvBuffer, {
-            access: 'private',
+            access: 'public',
             contentType: 'text/csv',
             addRandomSuffix: false,
           });

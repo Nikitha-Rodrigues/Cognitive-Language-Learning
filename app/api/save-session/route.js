@@ -1,4 +1,5 @@
 import { NextResponse } from "next/server";
+import { put } from "@vercel/blob";
 import fs from "fs";
 import path from "path";
 
@@ -15,9 +16,7 @@ export async function POST(request) {
 
     events.forEach(event => {
       // Find the first survey response that occurred AFTER this event
-      // This response reflects the user's state during the reading section that just occurred.
       const stateResponse = microSurveyResponses.find(r => r.timestamp > event.startTime);
-
       const state = stateResponse ? stateResponse.response : "ending";
 
       const row = [
@@ -34,23 +33,44 @@ export async function POST(request) {
       csvContent += row + "\n";
     });
 
-    // Create a data directory if it doesn't exist
-    const dataDir = path.join(process.cwd(), "cognitive_data");
-    if (!fs.existsSync(dataDir)) {
-      fs.mkdirSync(dataDir, { recursive: true });
+    const fileName = `session_${Date.now()}.csv`;
+    let blobUrl = null;
+
+    // 1. Attempt to save to Vercel Blob (if token is present)
+    if (process.env.BLOB_READ_WRITE_TOKEN) {
+      try {
+        const blob = await put(`cognitive_data/${fileName}`, csvContent, {
+          access: 'public',
+          contentType: 'text/csv',
+        });
+        blobUrl = blob.url;
+        console.log(`Session saved to Vercel Blob: ${blobUrl}`);
+      } catch (blobError) {
+        console.error("Vercel Blob upload failed:", blobError);
+      }
     }
 
-    // Save to file
-    const fileName = `session_${Date.now()}.csv`;
-    const filePath = path.join(dataDir, fileName);
-    fs.writeFileSync(filePath, csvContent);
-
-    console.log(`Session saved to ${filePath}`);
+    // 2. Always attempt local save as fallback/redundancy (will fail on Vercel read-only FS but works locally)
+    let localSaved = false;
+    try {
+      const dataDir = path.join(process.cwd(), "cognitive_data");
+      if (!fs.existsSync(dataDir)) {
+        fs.mkdirSync(dataDir, { recursive: true });
+      }
+      const filePath = path.join(dataDir, fileName);
+      fs.writeFileSync(filePath, csvContent);
+      localSaved = true;
+      console.log(`Session saved locally to ${filePath}`);
+    } catch (fsError) {
+      console.warn("Local filesystem save failed (expected on Vercel):", fsError.message);
+    }
 
     return NextResponse.json({
       success: true,
-      message: "Session saved on backend",
-      filePath: fileName
+      message: blobUrl ? "Session saved to cloud" : "Session saved locally",
+      url: blobUrl,
+      fileName: fileName,
+      localSaved: localSaved
     });
   } catch (error) {
     console.error("Error saving session:", error);

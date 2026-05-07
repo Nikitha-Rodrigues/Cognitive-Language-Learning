@@ -45,3 +45,5 @@ next-env.d.ts
 .env.local
 
 *.pyc
+.history/
+cognitive_data/

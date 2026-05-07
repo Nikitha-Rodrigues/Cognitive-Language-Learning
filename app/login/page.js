@@ -25,7 +25,6 @@ export default function Login() {
 
     // Admin credentials check
     if (formData.username === "admin" && formData.password === "admin123") {
-      alert("Login successful!");
       router.push("/dashboard");
     } else {
       setError("Invalid username or password. For demo, use: admin / admin123");
@@ -34,10 +33,10 @@ export default function Login() {
 
   return (
     <div className="relative min-h-screen flex items-center justify-center px-4 py-20 bg-stars overflow-hidden">
-      <img 
-        src="/hero_blob.png" 
-        alt="Background" 
-        className="absolute inset-0 w-full h-full object-cover opacity-25 mix-blend-screen pointer-events-none" 
+      <img
+        src="/hero_blob.png"
+        alt="Background"
+        className="absolute inset-0 w-full h-full object-cover opacity-25 mix-blend-screen pointer-events-none"
       />
       <div className="max-w-md w-full relative z-10">
         <Link

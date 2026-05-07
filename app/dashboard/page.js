@@ -4,7 +4,6 @@ import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { Play, Pause, RotateCcw, Languages, Loader2 } from "lucide-react";
 import MicroSurvey from "./microsurveys";
-import selectWords  from "./selectWord";
 
 export default function Dashboard() {
   const [content, setContent] = useState("");
@@ -20,10 +19,11 @@ export default function Dashboard() {
   const [isTranslatingContent, setIsTranslatingContent] = useState(false);
   const [translationError, setTranslationError] = useState("");
   const [selectedWords, setSelectedWords] = useState([]);
+  const [translationCache, setTranslationCache] = useState({});
+  const [fullTranslatedText, setFullTranslatedText] = useState("");
   const [selectedLevelIndex, setSelectedLevelIndex] = useState(1);
   const [isSelectingWords, setIsSelectingWords] = useState(false);
   const [selectionMessage, setSelectionMessage] = useState("");
-  const [showFunGame, setShowFunGame] = useState(false);
   const contentRef = useRef(null);
   const timerRef = useRef(null);
   const microSurveyTimerRef = useRef(null);
@@ -31,12 +31,12 @@ export default function Dashboard() {
   const [microSurveyResponses, setMicroSurveyResponses] = useState([]);
   const [isPausedManually, setIsPausedManually] = useState(false);
   const [events, setEvents] = useState([]); // replaces wordTimings for ML
-  const [isDemoMode, setIsDemoMode] = useState(false);
-  const [isFinished, setIsFinished] = useState(false);
-
   const percentageLevels = [5, 10, 20, 35, 50, 75, 85, 100];
   const currentPercentage = percentageLevels[selectedLevelIndex] || 10;
   const isTextBlurred = isSelectingWords || showMicroSurvey || isPausedManually || !isTranslating;
+  const [isFinished, setIsFinished] = useState(false);
+  const [semanticGroups, setSemanticGroups] = useState({});
+  const [precomputedLevels, setPrecomputedLevels] = useState({});
 
   const normalizeToken = (token) =>
     token
@@ -44,30 +44,10 @@ export default function Dashboard() {
       .trim()
       .toLowerCase();
 
-  const buildSelectedWordMap = () => {
-    return selectedWords.reduce((map, word) => {
-      const normalized = normalizeToken(word);
-      if (!normalized) return map;
-      map[normalized] = (map[normalized] || 0) + 1;
-      return map;
-    }, {});
+  const buildSelectedWordSet = () => {
+    return new Set(selectedWords.map(w => normalizeToken(w)));
   };
 
-  const selectWordsForLevel = async (text, levelIndex) => {
-    setIsSelectingWords(true);
-    setSelectionMessage("Adjusting translation percentage. This might take some time");
-    setShowFunGame(false);
-
-    try {
-      const words = selectWords(text, percentageLevels[levelIndex]);
-      setSelectedWords(words);
-      setSelectedLevelIndex(levelIndex);
-      return words;
-    } finally {
-      setIsSelectingWords(false);
-      setSelectionMessage("");
-    }
-  };
 
   const getNextLevelIndex = (response) => {
     if (response === "mastery") {
@@ -79,14 +59,13 @@ export default function Dashboard() {
     if (response === "frustrated") {
       return Math.max(selectedLevelIndex - 1, 0);
     }
-    if (response === "overloaded") {
+    if (response === "overwhelmed") {
       return Math.max(selectedLevelIndex - 2, 0);
     }
     return selectedLevelIndex;
   };
 
   const resumeFromFunGame = () => {
-    setShowFunGame(false);
     setIsPausedManually(false);
     setIsTranslating(true);
     setStartTime(Date.now());
@@ -115,7 +94,9 @@ Every word you read brings you closer to fluency.`;
     setStartTime(null);
   };
 
-  const startTranslating = () => {
+
+
+  const startTranslating = async () => {
     if (isEditing) {
       setIsEditing(false);
     }
@@ -125,35 +106,71 @@ Every word you read brings you closer to fluency.`;
       return;
     }
 
-    setIsTranslating(true);
-    setIsPausedManually(false);
-    setStartTime(Date.now());
+    try {
+      if (
+        Object.keys(precomputedLevels).length === 0
+      ) {
+        await prepareMutationSystem();
+      }
+
+      setIsTranslating(true);
+      setIsPausedManually(false);
+      setStartTime(Date.now());
+
+    } catch (error) {
+      console.error("Translation error:", error);
+      setTranslationError(error.message);
+      alert(`Translation Error: ${error.message}`);
+    } finally {
+      setIsTranslatingContent(false);
+    }
   };
 
   const recordEvent = (direction) => {
-  if (!startTime || !lines[currentLineIndex]) return null;
+    if (!startTime || !lines[currentLineIndex]) return null;
 
-  const words = lines[currentLineIndex].trim().split(/\s+/);
-  const currentWord = words[currentWordIndex] ?? "";
+    const words = lines[currentLineIndex].trim().split(/\s+/);
+    const currentWord = words[currentWordIndex] ?? "";
 
-  const wordId = `${currentLineIndex}-${currentWordIndex}`;
-  const endTime = Date.now();
-  const duration = endTime - startTime;
+    const wordId = `${currentLineIndex}-${currentWordIndex}`;
+    const endTime = Date.now();
+    const duration = endTime - startTime;
 
-  return {
-    wordId,
-    word: currentWord,
-    startTime,
-    endTime,
-    duration,
-    direction,
+    return {
+      wordId,
+      word: currentWord,
+      startTime,
+      endTime,
+      duration,
+      direction,
+      percentage: currentPercentage,
+    };
   };
-};
 
   const pushEvent = (event) => {
-  if (!event) return;
-  setEvents(prev => [...prev, event]);
-};
+    if (!event) return;
+    setEvents(prev => [...prev, event]);
+  };
+
+  const saveSessionData = async (finalEvents = events) => {
+    if (finalEvents.length === 0) return;
+    try {
+      const response = await fetch("/api/save-session", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          events: finalEvents,
+          microSurveyResponses
+        }),
+      });
+      const data = await response.json();
+      if (data.success) {
+        console.log("Session saved successfully on backend:", data.filePath);
+      }
+    } catch (error) {
+      console.error("Failed to save session on backend:", error);
+    }
+  };
 
   const completeTranslating = () => {
     const currentLine = lines[currentLineIndex];
@@ -163,18 +180,22 @@ Every word you read brings you closer to fluency.`;
     }
 
     const entry = recordEvent("complete");
-    pushEvent(entry);
+    const updatedEvents = [...events, entry];
+    setEvents(updatedEvents);
+
     setIsTranslating(false);
     setStartTime(null);
-    console.log("Events:", events);
-    alert(`🎉 Complete! Check console for detailed timings.`);
+    setIsFinished(true);
+
+    saveSessionData(updatedEvents);
+    alert(`🎉 Complete! Session data has been saved to the server.`);
   };
 
   const advanceWord = () => {
     if (!isTranslating || !lines.length) return;
     const currentLine = lines[currentLineIndex];
     const words = currentLine.trim().split(/\s+/);
-  
+
     const event = recordEvent("forward");
     pushEvent(event);
 
@@ -186,14 +207,7 @@ Every word you read brings you closer to fluency.`;
       setCurrentWordIndex(0);
       setStartTime(Date.now());
     } else {
-      if (isDemoMode && !isFinished) {
-      // loop back to start
-        setCurrentLineIndex(0);
-        setCurrentWordIndex(0);
-        setStartTime(Date.now());
-      } else {
-        completeTranslating();
-      }
+      completeTranslating();
     }
   };
 
@@ -213,41 +227,7 @@ Every word you read brings you closer to fluency.`;
     }
   };
 
-  const startDemo = async () => {
-    if (isEditing) {
-      setIsEditing(false);
-    }
-    setIsDemoMode(true);
-    setIsFinished(false);
-    setEvents([]);
-    setMicroSurveyResponses([]);
-    setShowMicroSurvey(false);
-    setIsPausedManually(false);
-    setShowFunGame(false);
 
-    const demoText = content && content.trim() ? content : sampleContent;
-    setContent(demoText);
-    const parsedLines = demoText.split("\n").filter(line => line.trim());
-    setLines(parsedLines);
-    setHasContent(true);
-    resetProgress();
-    setSelectedLevelIndex(1);
-    setIsSelectingWords(true);
-    setSelectionMessage("Adjusting translation percentage. This might take some time");
-
-    try {
-      const words = selectWords(demoText, 10);
-      setSelectedWords(words);
-      setIsTranslating(true);
-      setStartTime(Date.now());
-    } catch (error) {
-      console.error("SelectWord error:", error);
-      alert(`Error selecting words: ${error.message}`);
-    } finally {
-      setIsSelectingWords(false);
-      setSelectionMessage("");
-    }
-  };
 
   const pauseTranslating = () => {
     setIsTranslating(false);
@@ -261,18 +241,176 @@ Every word you read brings you closer to fluency.`;
     setTranslationError("");
 
     setEvents([]);
-    setIsDemoMode(false);
     setIsFinished(false);
     setMicroSurveyResponses([]);
     setShowMicroSurvey(false);
     setIsPausedManually(false);
     setIsSelectingWords(false);
     setSelectedWords([]);
+    setTranslationCache({});
+    setPrecomputedLevels({});
+    setSemanticGroups({});
     setSelectionMessage("");
 
     if (timerRef.current) clearTimeout(timerRef.current);
   };
+  const unique = (arr) => [...new Set(arr)];
 
+  const prepareMutationSystem = async () => {
+    try {
+      setIsSelectingWords(true);
+
+      setSelectionMessage(
+        "Preparing adaptive translations..."
+      );
+
+      // STEP 1 — extract semantics
+
+      const semanticResponse = await fetch(
+        "/api/extract-semantics",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            text: content,
+          }),
+        }
+      );
+
+      const semantics =
+        await semanticResponse.json();
+
+      setSemanticGroups(semantics);
+
+      // STEP 2 — build stages
+      const levels = {
+        5: unique([
+          ...(semantics.nouns ? semantics.nouns.slice(0, Math.ceil(semantics.nouns.length / 2)) : []),
+        ]),
+
+        10: unique([
+          ...semantics.nouns,
+        ]),
+
+        20: unique([
+          ...semantics.nouns,
+          ...semantics.proper_nouns,
+        ]),
+
+        35: unique([
+          ...semantics.nouns,
+          ...semantics.proper_nouns,
+          ...semantics.adjectives,
+        ]),
+
+        50: unique([
+          ...semantics.nouns,
+          ...semantics.proper_nouns,
+          ...semantics.adjectives,
+          ...semantics.verbs,
+        ]),
+
+        75: unique([
+          ...semantics.nouns,
+          ...semantics.proper_nouns,
+          ...semantics.adjectives,
+          ...semantics.verbs,
+          ...semantics.verb_phrases,
+        ]),
+
+        85: unique([
+          ...semantics.nouns,
+          ...semantics.proper_nouns,
+          ...semantics.adjectives,
+          ...semantics.verbs,
+          ...semantics.verb_phrases,
+          ...semantics.clauses,
+        ]),
+
+        100: ["__FULL_TEXT__"],
+      };
+
+      setPrecomputedLevels(levels);
+
+      // STEP 3 — collect all unique chunks
+
+      const allChunks = unique([
+        ...levels[10],
+        ...levels[20],
+        ...levels[35],
+        ...levels[50],
+        ...levels[75],
+        ...levels[85],
+      ]).filter(Boolean);
+
+      // STEP 4 — translate everything once
+
+      const translationResponse = await fetch(
+        "/api/translate",
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify({
+            texts: allChunks,
+            target_lang: targetLang,
+          }),
+        }
+      );
+
+      const translationData =
+        await translationResponse.json();
+
+      setTranslationCache(
+        translationData.translations || {}
+      );
+      const fullTranslationResponse =
+        await fetch("/api/translate", {
+          method: "POST",
+
+          headers: {
+            "Content-Type": "application/json",
+          },
+
+          body: JSON.stringify({
+            texts: [content],
+            target_lang: targetLang,
+          }),
+        });
+
+      const fullTranslationData =
+        await fullTranslationResponse.json();
+
+      const fullTranslated =
+        fullTranslationData.translations?.[
+        content.trim().toLowerCase()
+        ];
+
+      setFullTranslatedText(
+        fullTranslated || content
+      );
+
+      // initial level
+
+      setSelectedWords(
+        levels[currentPercentage] || []
+      );
+
+    } catch (error) {
+      console.error(error);
+
+      alert(error.message);
+
+    } finally {
+      setIsSelectingWords(false);
+
+      setSelectionMessage("");
+    }
+  };
   const translateContent = async () => {
     if (!content || !content.trim()) {
       alert("Please add content first using the Edit button");
@@ -289,7 +427,7 @@ Every word you read brings you closer to fluency.`;
           "Content-Type": "application/json",
         },
         body: JSON.stringify({
-          text: content,
+          texts: [content],
           target_lang: targetLang,
         }),
       });
@@ -325,7 +463,7 @@ Every word you read brings you closer to fluency.`;
         advanceWord();
       }
     };
-    
+
     window.addEventListener("keydown", handleKeyPress);
     return () => window.removeEventListener("keydown", handleKeyPress);
   }, [isTranslating, currentLineIndex, currentWordIndex, lines, startTime]);
@@ -348,20 +486,45 @@ Every word you read brings you closer to fluency.`;
     };
   }, [isTranslating, isFinished, showMicroSurvey, isPausedManually]);
 
+  const translatedLines = fullTranslatedText ? fullTranslatedText.split("\n").filter(l => l.trim()) : [];
+
   const renderLine = (line, lineIdx) => {
-    const selectedWordMap = buildSelectedWordMap();
-    const usedWordCounts = {};
+    if (currentPercentage === 100) {
+      const translatedLine = translatedLines[lineIdx] || line;
+      const words = translatedLine.split(/\s+/);
+      return (
+        <span className="inline-block">
+          {words.map((word, wordIdx) => {
+            const isCurrentWord = isTranslating && lineIdx === currentLineIndex && wordIdx === currentWordIndex;
+            return (
+              <span
+                key={wordIdx}
+                style={{
+                  color: isCurrentWord ? "#FFD700" : "#d63384",
+                  fontWeight: "700",
+                  transition: "all 0.2s ease"
+                }}
+              >
+                {word}{" "}
+              </span>
+            );
+          })}
+        </span>
+      );
+    }
+    const selectedWordSet = buildSelectedWordSet();
     const words = line.split(" ");
 
     return (
       <span className="inline-block">
         {words.map((word, wordIdx) => {
           const normalized = normalizeToken(word);
-          const usedCount = usedWordCounts[normalized] || 0;
-          const selectedCount = selectedWordMap[normalized] || 0;
-          const isSelected = normalized && usedCount < selectedCount;
-          usedWordCounts[normalized] = usedCount + 1;
+          const isSelected = normalized && selectedWordSet.has(normalized);
           const isCurrentWord = isTranslating && lineIdx === currentLineIndex && wordIdx === currentWordIndex;
+
+          const displayContent = (isSelected && translationCache[normalized])
+            ? word.replace(new RegExp(`\\b${normalized}\\b`, 'i'), translationCache[normalized])
+            : word;
 
           return (
             <span
@@ -372,7 +535,7 @@ Every word you read brings you closer to fluency.`;
                 transition: "all 0.2s ease"
               }}
             >
-              {word}{" "}
+              {displayContent}{" "}
             </span>
           );
         })}
@@ -385,9 +548,9 @@ Every word you read brings you closer to fluency.`;
     setShowMicroSurvey(false);
 
     if (response === "distracted") {
-      setShowFunGame(true);
-      setIsTranslating(false);
-      setIsPausedManually(true);
+      setIsPausedManually(false);
+      setIsTranslating(true);
+      setStartTime(Date.now());
       return;
     }
 
@@ -399,7 +562,11 @@ Every word you read brings you closer to fluency.`;
       setSelectionMessage("Adjusting translation percentage. This might take some time");
 
       try {
-        await selectWordsForLevel(content, nextLevel);
+        const nextPercentage = percentageLevels[nextLevel];
+
+        setSelectedWords(precomputedLevels[nextPercentage] || []);
+
+        setSelectedLevelIndex(nextLevel);
       } catch (error) {
         console.error("Level adjustment error:", error);
         alert(`Unable to adjust level: ${error.message}`);
@@ -425,10 +592,10 @@ Every word you read brings you closer to fluency.`;
 
   return (
     <div className="relative min-h-screen flex flex-col items-center justify-center px-4 py-8 bg-stars overflow-hidden">
-      <img 
-        src="/hero_blob.png" 
-        alt="Background" 
-        className="absolute inset-0 w-full h-full object-cover opacity-25 mix-blend-screen pointer-events-none z-0" 
+      <img
+        src="/hero_blob.png"
+        alt="Background"
+        className="absolute inset-0 w-full h-full object-cover opacity-25 mix-blend-screen pointer-events-none z-0"
       />
       <div className="max-w-5xl w-full mb-6 flex justify-between items-center relative z-10">
         <Link href="/" className="text-textSecondary hover:text-accent-primary transition-colors">
@@ -437,31 +604,37 @@ Every word you read brings you closer to fluency.`;
         <div className="flex gap-3 flex-wrap items-center">
           <button
             onClick={startTranslating}
-            disabled={isTranslating || !hasContent}
-            className="flex items-center gap-2 px-6 py-2 bg-accent-primary text-bg-primary font-bold rounded-lg hover:bg-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed"
+            disabled={isTranslating || !hasContent || isTranslatingContent}
+            className="flex items-center gap-2 px-6 py-2 bg-accent-primary text-bg-primary font-bold rounded-lg hover:bg-accent-hover transition-all disabled:opacity-50"
           >
-            <Play size={18} /> Start Translating
-          </button>
-          {/* #for temporary demo only */}
-          <button
-            onClick={startDemo}
-            disabled={isTranslating}
-            className="flex items-center gap-2 px-6 py-2 bg-accent-primary/80 text-bg-primary font-bold rounded-lg hover:bg-accent-hover transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-          >
-            <Play size={18} /> Start Demo
+            {isTranslatingContent ? (
+              <>
+                <Loader2 size={18} className="animate-spin" /> Translating...
+              </>
+            ) : (
+              <>
+                <Play size={18} /> Start Translating
+              </>
+            )}
           </button>
           <button
             onClick={() => {
               setIsFinished(true);
               setIsTranslating(false);
               setIsPausedManually(false);
+
+              // Save to backend
+              saveSessionData();
+
               console.log("Final Events:", events);
               console.log("Microsurvey Responses:", microSurveyResponses);
+
+              alert("Session finished! Data saved to backend.");
             }}
-            disabled={!isDemoMode || isFinished}
+            disabled={isFinished || !isTranslating}
             className="flex items-center gap-2 px-4 py-2 border border-green-500 rounded-lg hover:bg-green-500/10 transition-all disabled:opacity-50"
           >
-            Finish Demo
+            Finish Session
           </button>
           <button
             onClick={isTranslating ? pauseTranslating : startTranslating}
@@ -478,37 +651,22 @@ Every word you read brings you closer to fluency.`;
           </button>
           <div className="flex items-center gap-2 px-1 bg-bg-secondary/50 border border-accent-primary/20 rounded-lg backdrop-blur-sm">
             <Languages size={18} className="ml-2 text-accent-primary" />
-          <select
-            value={targetLang}
-            onChange={(e) => setTargetLang(e.target.value)}
-            className="bg-transparent text-textPrimary py-2 px-1 outline-none cursor-pointer text-sm"
-            disabled={isTranslating || isTranslatingContent}
-          >
-            <option value="hi-IN" className="bg-[#1a1a1a]">Hindi</option>
-            <option value="kn-IN" className="bg-[#1a1a1a]">Kannada</option>
-          </select>
+            <select
+              value={targetLang}
+              onChange={(e) => setTargetLang(e.target.value)}
+              className="bg-transparent text-textPrimary py-2 px-1 outline-none cursor-pointer text-sm"
+              disabled={isTranslating || isTranslatingContent}
+            >
+              <option value="hi-IN" className="bg-[#1a1a1a]">Hindi</option>
+              <option value="kn-IN" className="bg-[#1a1a1a]">Kannada</option>
+            </select>
           </div>
-          <button
-            onClick={translateContent}
-            disabled={isTranslating || !hasContent || isTranslatingContent}
-            className="flex items-center gap-2 px-4 py-2 border border-accent-primary rounded-lg hover:bg-accent-primary/10 transition-all disabled:opacity-50"
-          >
-            {isTranslatingContent ? (
-              <>
-                <Loader2 size={18} className="animate-spin" /> Translating...
-              </>
-            ) : (
-              <>
-                <Languages size={18} /> Translate
-              </>
-            )}
-          </button>
           <button
             onClick={() => setIsEditing(!isEditing)}
             disabled={isTranslating || isTranslatingContent}
             className="flex items-center gap-2 px-4 py-2 border border-accent-primary rounded-lg hover:bg-accent-primary/10 transition-all disabled:opacity-50"
           >
-             Edit
+            Edit
           </button>
         </div>
       </div>
@@ -516,9 +674,7 @@ Every word you read brings you closer to fluency.`;
         {hasContent && (
           <>
             <span>Total words: <strong>{totalWords}</strong></span>
-            {isDemoMode && (
-              <span>Current selection: <strong>{currentPercentage}%</strong></span>
-            )}
+            <span>Current selection: <strong>{currentPercentage}%</strong></span>
             {isTranslating && <span>Current word: <strong>{currentWordPosition}/{totalWords}</strong></span>}
           </>
         )}
@@ -540,7 +696,7 @@ Every word you read brings you closer to fluency.`;
             </div>
           ) : (
             <div className="relative">
-              <div 
+              <div
                 ref={contentRef}
                 className={`content-viewport space-y-4 min-h-[400px] max-h-[60vh] overflow-y-auto transition-all duration-300 ${isTextBlurred ? 'blur-sm' : ''}`}
                 style={{
@@ -551,13 +707,12 @@ Every word you read brings you closer to fluency.`;
                 {lines.map((line, idx) => (
                   <div
                     key={idx}
-                    className={`transition-all duration-300 ${
-                      idx === currentLineIndex && isTranslating
-                        ? "text-xl md:text-2xl font-medium"
-                        : idx < currentLineIndex
+                    className={`transition-all duration-300 ${idx === currentLineIndex && isTranslating
+                      ? "text-xl md:text-2xl font-medium"
+                      : idx < currentLineIndex
                         ? "text-textSecondary/30"
                         : "text-textSecondary/50"
-                    }`}
+                      }`}
                   >
                     {renderLine(line, idx)}
                   </div>
@@ -582,26 +737,6 @@ Every word you read brings you closer to fluency.`;
         )}
       </div>
 
-      {showFunGame && (
-        <div className="fixed inset-0 flex items-center justify-center z-50 px-4">
-          <div className="max-w-2xl w-full p-8 bg-gradient-to-r from-violet-950/95 via-fuchsia-950/95 to-pink-950/95 border border-pink-500/50 rounded-3xl shadow-2xl backdrop-blur-sm">
-            <h3 className="text-3xl font-bold text-white mb-4 text-center">🎮 Fun Game Break</h3>
-            <p className="text-textSecondary mb-6 text-center">
-              You were distracted, so the demo paused. Here's a joke to keep you entertained:
-            </p>
-            <div className="rounded-2xl bg-bg-secondary/80 p-6 border border-white/10 mb-6 text-center">
-              <p className="text-textPrimary font-semibold text-lg">Why did the word go to therapy?</p>
-              <p className="mt-3 text-textSecondary text-base">Because it had too many issues with its letters! 😄</p>
-            </div>
-            <button
-              onClick={resumeFromFunGame}
-              className="w-full px-5 py-3 bg-fuchsia-500 text-white rounded-full font-semibold hover:bg-fuchsia-400 transition-all"
-            >
-              Resume Demo
-            </button>
-          </div>
-        </div>
-      )}
 
       <MicroSurvey isVisible={showMicroSurvey} onResponse={handleMicroSurveyResponse} />
     </div>

@@ -40,7 +40,7 @@ export async function POST(request) {
     if (process.env.BLOB_READ_WRITE_TOKEN) {
       try {
         const blob = await put(`cognitive_data/${fileName}`, csvContent, {
-          access: 'public',
+          access: 'private',
           contentType: 'text/csv',
         });
         blobUrl = blob.url;

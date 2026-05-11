@@ -183,12 +183,10 @@ Every word you read brings you closer to fluency.`;
     const updatedEvents = [...events, entry];
     setEvents(updatedEvents);
 
-    setIsTranslating(false);
-    setStartTime(null);
     setIsFinished(true);
-
-    saveSessionData(updatedEvents);
-    alert(`🎉 Complete! Session data has been saved to the server.`);
+    setCurrentLineIndex(0);
+    setCurrentWordIndex(0);
+    setStartTime(Date.now());
   };
 
   const advanceWord = () => {
@@ -618,20 +616,16 @@ Every word you read brings you closer to fluency.`;
             )}
           </button>
           <button
-            onClick={() => {
-              setIsFinished(true);
-              setIsTranslating(false);
-              setIsPausedManually(false);
-
+            onClick={async () => {
               // Save to backend
-              saveSessionData();
-
-              console.log("Final Events:", events);
-              console.log("Microsurvey Responses:", microSurveyResponses);
-
+              await saveSessionData();
               alert("Session finished! Data saved to backend.");
+
+              // Clear content and reset state
+              setContent("");
+              resetTranslating();
             }}
-            disabled={isFinished || !isTranslating}
+            disabled={!hasContent && events.length === 0}
             className="flex items-center gap-2 px-4 py-2 border border-green-500 rounded-lg hover:bg-green-500/10 transition-all disabled:opacity-50"
           >
             Finish Session

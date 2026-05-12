@@ -16,17 +16,21 @@ export async function POST(request) {
         }
 
         const prompt = `
-Analyze the following English text.
+Analyze the English text below for an adaptive language learning system. Your goal is to extract key semantic units that, when translated, allow a learner to gradually understand the text without losing its core meaning (essence).
 
-Extract:
-1. nouns
-2. proper_nouns
-3. adjectives
-4. verbs
-5. verb_phrases
-6. clauses
+Extract the following categories, prioritizing words and phrases that are thematically central or high-impact:
+1. "nouns": Concrete objects, people, and core concepts that define the subject matter.
+2. "proper_nouns": Specific names of people, places, or unique organizations.
+3. "adjectives": Descriptive words that add significant detail, emotion, or essential context.
+4. "verbs": Primary action words that drive the narrative or logic of the sentences.
+5. "verb_phrases": Meaningful multi-word actions or phrasal verbs (e.g., "broke down", "looked into").
+6. "clauses": Self-contained phrases or short segments that represent a complete sub-thought or contextual setting (e.g., "in the dark of night", "despite the weather").
 
-Return ONLY valid JSON.
+CRITICAL INSTRUCTIONS:
+- Capture words and phrases EXACTLY as they appear in the text (preserving casing and spelling).
+- Focus on words that are essential to understanding the "essence" of each sentence.
+- Ensure "clauses" are natural units of meaning, not just random fragments.
+- Return ONLY valid JSON.
 
 Format:
 {

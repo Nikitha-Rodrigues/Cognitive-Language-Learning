@@ -37,6 +37,14 @@ export default function Dashboard() {
   const [isFinished, setIsFinished] = useState(false);
   const [semanticGroups, setSemanticGroups] = useState({});
   const [precomputedLevels, setPrecomputedLevels] = useState({});
+  const [username, setUsername] = useState("anonymous");
+
+  useEffect(() => {
+    const storedUsername = localStorage.getItem("username");
+    if (storedUsername) {
+      setUsername(storedUsername);
+    }
+  }, []);
 
   const normalizeToken = (token) =>
     token
@@ -160,7 +168,8 @@ Every word you read brings you closer to fluency.`;
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           events: finalEvents,
-          microSurveyResponses
+          microSurveyResponses,
+          username
         }),
       });
       const data = await response.json();
@@ -467,20 +476,15 @@ Every word you read brings you closer to fluency.`;
   }, [isTranslating, currentLineIndex, currentWordIndex, lines, startTime]);
 
   useEffect(() => {
+    let timer;
     if (isTranslating && !isFinished && !showMicroSurvey && !isPausedManually) {
-      microSurveyTimerRef.current = setInterval(() => {
+      timer = setTimeout(() => {
         setShowMicroSurvey(true);
         setIsTranslating(false);
       }, 10000);
-    } else {
-      if (microSurveyTimerRef.current) {
-        clearInterval(microSurveyTimerRef.current);
-      }
     }
     return () => {
-      if (microSurveyTimerRef.current) {
-        clearInterval(microSurveyTimerRef.current);
-      }
+      if (timer) clearTimeout(timer);
     };
   }, [isTranslating, isFinished, showMicroSurvey, isPausedManually]);
 

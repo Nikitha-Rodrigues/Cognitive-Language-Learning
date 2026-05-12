@@ -5,7 +5,7 @@ import path from "path";
 
 export async function POST(request) {
   try {
-    const { events, microSurveyResponses } = await request.json();
+    const { events, microSurveyResponses, username = "anonymous" } = await request.json();
 
     if (!events || events.length === 0) {
       return NextResponse.json({ error: "No events to save" }, { status: 400 });
@@ -33,7 +33,7 @@ export async function POST(request) {
       csvContent += row + "\n";
     });
 
-    const fileName = `session_${Date.now()}.csv`;
+    const fileName = `${username}_${Date.now()}.csv`;
     let blobUrl = null;
 
     console.log(`Preparing to save session: ${fileName}`);

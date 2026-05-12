@@ -23,11 +23,12 @@ export default function Login() {
   const handleSubmit = (e) => {
     e.preventDefault();
 
-    // Admin credentials check
-    if (formData.username === "admin" && formData.password === "admin123") {
+    // Any name is allowed, but password must be idp1234
+    if (formData.password === "idp1234") {
+      localStorage.setItem("username", formData.username);
       router.push("/dashboard");
     } else {
-      setError("Invalid username or password. For demo, use: admin / admin123");
+      setError("Invalid password. Use: idp1234");
     }
   };
 
@@ -57,7 +58,7 @@ export default function Login() {
                 name="username"
                 value={formData.username}
                 onChange={handleChange}
-                placeholder="admin"
+                placeholder="Enter your name"
                 className="w-full px-4 py-2 rounded-lg bg-bg-secondary border border-accent-primary/20 focus:border-accent-primary focus:outline-none transition-colors"
                 required
               />
@@ -72,7 +73,7 @@ export default function Login() {
                   name="password"
                   value={formData.password}
                   onChange={handleChange}
-                  placeholder="admin123"
+                  placeholder="Enter password"
                   className="w-full px-4 py-2 rounded-lg bg-bg-secondary border border-accent-primary/20 focus:border-accent-primary focus:outline-none transition-colors pr-10"
                   required
                 />
@@ -107,7 +108,7 @@ export default function Login() {
 
           <div className="mt-4 pt-4 border-t border-accent-primary/20">
             <p className="text-textSecondary text-xs text-center">
-              Demo Credentials: admin / admin123
+              Enter any name and password: idp1234
             </p>
           </div>
         </div>

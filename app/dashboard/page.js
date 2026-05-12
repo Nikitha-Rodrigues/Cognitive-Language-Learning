@@ -192,7 +192,10 @@ Every word you read brings you closer to fluency.`;
     const updatedEvents = [...events, entry];
     setEvents(updatedEvents);
 
-    setIsFinished(true);
+    setShowMicroSurvey(true);
+    setIsTranslating(false);
+
+    setIsFinished(false);
     setCurrentLineIndex(0);
     setCurrentWordIndex(0);
     setStartTime(Date.now());

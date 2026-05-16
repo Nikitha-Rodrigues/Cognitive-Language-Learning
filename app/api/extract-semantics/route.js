@@ -71,10 +71,15 @@ Text:
 
     } catch (error) {
         console.error("Groq semantic extraction error:", error);
+        
+        const isQuotaExceeded = error.status === 402 || error.status === 429 || error.message?.toLowerCase().includes("quota") || error.message?.toLowerCase().includes("credit");
 
         return Response.json(
-            { error: error.message },
-            { status: 500 }
+            { 
+                error: typeof error.message === 'string' ? error.message : (error.message?.message || JSON.stringify(error.message) || "Extraction error"),
+                isQuotaExceeded: isQuotaExceeded
+            },
+            { status: error.status || 500 }
         );
     }
 }

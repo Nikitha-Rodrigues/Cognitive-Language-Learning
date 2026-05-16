@@ -32,9 +32,20 @@ export async function POST(request) {
     );
 
     const data = await response.json();
-
+    
     if (!response.ok) {
-      throw new Error(JSON.stringify(data));
+      const errorMsg = typeof data.error === 'object' 
+        ? (data.error.message || JSON.stringify(data.error)) 
+        : (data.error || "Translation API error");
+        
+      return Response.json(
+        { 
+          error: errorMsg, 
+          details: data,
+          isQuotaExceeded: response.status === 403 || response.status === 402
+        },
+        { status: response.status }
+      );
     }
 
     const translated =

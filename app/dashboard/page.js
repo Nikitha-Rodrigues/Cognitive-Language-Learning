@@ -44,7 +44,28 @@ export default function Dashboard() {
     if (storedUsername) {
       setUsername(storedUsername);
     }
+
+    if ("Notification" in window && Notification.permission === "default") {
+      Notification.requestPermission();
+    }
   }, []);
+
+  const showNotification = (title, message) => {
+    if ("Notification" in window && Notification.permission === "granted") {
+      new Notification(title, { body: message, icon: "/favicon.ico" });
+    } else {
+      alert(`${title}\n\n${message}`);
+    }
+  };
+
+  const ensureErrorString = (err) => {
+    if (!err) return "";
+    if (typeof err === "string") return err;
+    if (typeof err === "object") {
+      return err.message || JSON.stringify(err);
+    }
+    return String(err);
+  };
 
   const normalizeToken = (token) =>
     token
@@ -192,9 +213,6 @@ Every word you read brings you closer to fluency.`;
     const updatedEvents = [...events, entry];
     setEvents(updatedEvents);
 
-    setShowMicroSurvey(true);
-    setIsTranslating(false);
-
     setIsFinished(false);
     setCurrentLineIndex(0);
     setCurrentWordIndex(0);
@@ -271,7 +289,14 @@ Every word you read brings you closer to fluency.`;
       setIsSelectingWords(true);
 
       setSelectionMessage(
-        "Preparing adaptive translations..."
+        <>
+          Preparing adaptive translations.. <br /><br />
+          Mastery - level difficulty increased <br />
+          Focused - level difficulty same <br />
+          Distracted - A small game <br />
+          Frustrated - level difficulty decreased <br />
+          Overwhelmed - level difficulty decreased more
+        </>
       );
 
       // STEP 1 — extract semantics
@@ -289,8 +314,18 @@ Every word you read brings you closer to fluency.`;
         }
       );
 
-      const semantics =
-        await semanticResponse.json();
+      const semantics = await semanticResponse.json();
+
+      if (!semanticResponse.ok) {
+        const errorMsg = ensureErrorString(semantics.error);
+        if (semantics.isQuotaExceeded) {
+          showNotification("API Credits Exhausted", "Your Groq API credits have been used up. Please check your billing dashboard.");
+          const err = new Error(errorMsg || "Quota exceeded");
+          err.isQuota = true;
+          throw err;
+        }
+        throw new Error(errorMsg || "Failed to extract semantics");
+      }
 
       setSemanticGroups(semantics);
 
@@ -372,8 +407,18 @@ Every word you read brings you closer to fluency.`;
         }
       );
 
-      const translationData =
-        await translationResponse.json();
+      const translationData = await translationResponse.json();
+
+      if (!translationResponse.ok) {
+        const errorMsg = ensureErrorString(translationData.error);
+        if (translationData.isQuotaExceeded) {
+          showNotification("API Credits Exhausted", "Your Sarvam AI translation credits have been used up. Please check your billing dashboard.");
+          const err = new Error(errorMsg || "Quota exceeded");
+          err.isQuota = true;
+          throw err;
+        }
+        throw new Error(errorMsg || "Failed to translate chunks");
+      }
 
       setTranslationCache(
         translationData.translations || {}
@@ -392,8 +437,18 @@ Every word you read brings you closer to fluency.`;
           }),
         });
 
-      const fullTranslationData =
-        await fullTranslationResponse.json();
+      const fullTranslationData = await fullTranslationResponse.json();
+
+      if (!fullTranslationResponse.ok) {
+        const errorMsg = ensureErrorString(fullTranslationData.error);
+        if (fullTranslationData.isQuotaExceeded) {
+          showNotification("API Credits Exhausted", "Your Sarvam AI translation credits have been used up. Please check your billing dashboard.");
+          const err = new Error(errorMsg || "Quota exceeded");
+          err.isQuota = true;
+          throw err;
+        }
+        throw new Error(errorMsg || "Failed to translate full text");
+      }
 
       const fullTranslated =
         fullTranslationData.translations?.[
@@ -412,9 +467,9 @@ Every word you read brings you closer to fluency.`;
 
     } catch (error) {
       console.error(error);
-
-      alert(error.message);
-
+      if (!error.isQuota) {
+        alert(error.message);
+      }
     } finally {
       setIsSelectingWords(false);
 
@@ -445,7 +500,14 @@ Every word you read brings you closer to fluency.`;
       const data = await response.json();
 
       if (!response.ok) {
-        throw new Error(data.error || "Translation failed");
+        const errorMsg = ensureErrorString(data.error);
+        if (data.isQuotaExceeded) {
+          showNotification("API Credits Exhausted", "Your Sarvam AI translation credits have been used up. Please check your billing dashboard.");
+          const err = new Error(errorMsg || "Quota exceeded");
+          err.isQuota = true;
+          throw err;
+        }
+        throw new Error(errorMsg || "Translation failed");
       }
 
       if (data.translatedText) {
@@ -455,7 +517,9 @@ Every word you read brings you closer to fluency.`;
     } catch (error) {
       console.error("Translation error:", error);
       setTranslationError(error.message);
-      alert(`Translation Error: ${error.message}`);
+      if (!error.isQuota) {
+        alert(`Translation Error: ${error.message}`);
+      }
     } finally {
       setIsTranslatingContent(false);
     }

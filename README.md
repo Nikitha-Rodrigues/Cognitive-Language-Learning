@@ -33,9 +33,32 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 ## 📊 Data Research
 Session logs are saved automatically to the `cognitive_data/` directory in the project root whenever a session is completed or manually finished. These CSV files are designed for direct integration into machine learning pipelines.
 
-## 🧪 Technologies
-- **Frontend**: Next.js 15+ (App Router), React 19
-- **Motion**: Framer Motion
-- **Icons**: Lucide React
-- **Language Analysis**: Compromise NLP
-- **Styling**: Tailwind CSS 4+
+## Tech Stack
+
+### Frontend & Backend
+
+* Next.js 16
+* React 19
+* Tailwind CSS 4
+* Framer Motion
+* Lucide React
+
+### AI & NLP
+
+* Sarvam AI
+* Groq Cloud
+
+### Storage & Deployment
+
+* Vercel Blob Storage
+* Vercel
+
+---
+
+## Techniques
+
+* Adaptive Scaffolding
+* Cognitive State Probing
+* Semantic Mutation
+* ML-Based Cognitive Load Prediction
+* Timestamped Event Logging

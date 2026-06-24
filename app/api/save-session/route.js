@@ -36,9 +36,19 @@ export async function POST(request) {
     });
 
     const fileName = `${username}_${Date.now()}.csv`;
-    let blobUrl = null;
+    const surveyFileName = `survey_${fileName}`;
 
-    console.log(`Preparing to save session: ${fileName}`);
+    let surveyCsvContent = "CognitiveState,PredictedState\n";
+    if (microSurveyResponses && microSurveyResponses.length > 0) {
+      microSurveyResponses.forEach(r => {
+        surveyCsvContent += `${r.response},${r.predictedState || ""}\n`;
+      });
+    }
+
+    let blobUrl = null;
+    let surveyBlobUrl = null;
+
+    console.log(`Preparing to save session: ${fileName} and ${surveyFileName}`);
     console.log(`Events received: ${events.length}`);
     console.log(`CSV Length: ${csvContent.length} characters`);
 
@@ -59,6 +69,16 @@ export async function POST(request) {
           });
           blobUrl = blob.url;
           console.log(`Session saved to Vercel Blob: ${blobUrl}`);
+
+          // Upload survey CSV
+          const surveyCsvBuffer = Buffer.from(surveyCsvContent, 'utf-8');
+          const surveyBlob = await put(`cognitive_data/${surveyFileName}`, surveyCsvBuffer, {
+            access: 'public',
+            contentType: 'text/csv',
+            addRandomSuffix: false,
+          });
+          surveyBlobUrl = surveyBlob.url;
+          console.log(`Survey saved to Vercel Blob: ${surveyBlobUrl}`);
         } catch (blobError) {
           console.error("Vercel Blob upload failed:", blobError);
         }
@@ -74,6 +94,8 @@ export async function POST(request) {
       }
       const filePath = path.join(dataDir, fileName);
       fs.writeFileSync(filePath, csvContent);
+      const surveyFilePath = path.join(dataDir, surveyFileName);
+      fs.writeFileSync(surveyFilePath, surveyCsvContent);
       localSaved = true;
       console.log(`Session saved locally to ${filePath}`);
     } catch (fsError) {

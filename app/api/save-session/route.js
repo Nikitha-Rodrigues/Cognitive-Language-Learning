@@ -12,12 +12,13 @@ export async function POST(request) {
     }
 
     // Prepare CSV content
-    let csvContent = "Word,WordID,Duration,Direction,StartTime,EndTime,CognitiveState,Percentage\n";
+    let csvContent = "Word,WordID,Duration,Direction,StartTime,EndTime,CognitiveState,PredictedState,Percentage\n";
 
     events.forEach(event => {
       // Find the first survey response that occurred AFTER this event
       const stateResponse = microSurveyResponses.find(r => r.timestamp > event.startTime);
       const state = stateResponse ? stateResponse.response : "ending";
+      const predState = stateResponse ? (stateResponse.predictedState || "") : "";
 
       const row = [
         `"${event.word.replace(/"/g, '""')}"`,
@@ -27,6 +28,7 @@ export async function POST(request) {
         event.startTime,
         event.endTime,
         state,
+        predState,
         event.percentage || ""
       ].join(",");
 

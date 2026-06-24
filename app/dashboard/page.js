@@ -636,7 +636,7 @@ Every word you read brings you closer to fluency.`;
   };
 
   const handleMicroSurveyResponse = async (response) => {
-    setMicroSurveyResponses(prev => [...prev, { response, timestamp: Date.now() }]);
+    setMicroSurveyResponses(prev => [...prev, { response, predictedState, timestamp: Date.now() }]);
     setShowMicroSurvey(false);
 
     if (response === "distracted") {

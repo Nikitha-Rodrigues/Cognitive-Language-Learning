@@ -27,6 +27,7 @@ export default function Dashboard() {
   const contentRef = useRef(null);
   const timerRef = useRef(null);
   const microSurveyTimerRef = useRef(null);
+  const eventsRef = useRef([]);
   const [showMicroSurvey, setShowMicroSurvey] = useState(false);
   const [predictedState, setPredictedState] = useState(null);
   const [selectedModel, setSelectedModel] = useState("randomforest");
@@ -545,6 +546,10 @@ Every word you read brings you closer to fluency.`;
   }, [isTranslating, currentLineIndex, currentWordIndex, lines, startTime]);
 
   useEffect(() => {
+    eventsRef.current = events;
+  }, [events]);
+
+  useEffect(() => {
     let timer;
     if (isTranslating && !isFinished && !showMicroSurvey && !isPausedManually) {
       timer = setTimeout(async () => {
@@ -557,7 +562,7 @@ Every word you read brings you closer to fluency.`;
             headers: {
               "Content-Type": "application/json",
             },
-            body: JSON.stringify({ events, modelType: selectedModel }),
+            body: JSON.stringify({ events: eventsRef.current, modelType: selectedModel }),
           });
           const data = await response.json();
           setPredictedState(data.predictedState || "focused");
@@ -571,7 +576,7 @@ Every word you read brings you closer to fluency.`;
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [isTranslating, isFinished, showMicroSurvey, isPausedManually, events]);
+  }, [isTranslating, isFinished, showMicroSurvey, isPausedManually, selectedModel]);
 
   const translatedLines = fullTranslatedText ? fullTranslatedText.split("\n").filter(l => l.trim()) : [];
 

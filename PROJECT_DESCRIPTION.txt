@@ -1,0 +1,57 @@
+# Cognitive Language Learning Platform - Project Description
+
+## Overview
+The Cognitive Language Learning Platform is an advanced educational tool designed to optimize the language learning process through real-time cognitive state tracking and adaptive content delivery. Unlike traditional language learning apps, this platform monitors how a user interacts with text at a granular level (word-by-word) and uses this data to dynamically adjust the difficulty and focus of the learning material.
+
+## Core Objectives
+1. **Optimize Learning Efficiency**: By understanding the user's cognitive load, the platform provides just the right amount of challenge to keep the learner in the "flow state."
+2. **Data-Driven Personalization**: Every session generates rich behavioral data that can be used to refine AI models for predicting cognitive states like frustration, mastery, or distraction.
+3. **Seamless Integration of Translation**: The platform bridges the gap between native and target languages by gradually introducing translations of semantic components (nouns, verbs, clauses) rather than full-text translation.
+
+## Key Features
+
+### 1. Real-Time Cognitive Tracking
+The system records precisely how long a user spends on each word and tracks "backward" movements (regressions), which are often indicators of comprehension difficulties or cognitive overload.
+
+### 2. Adaptive Scaffolding (Semantic Mutation)
+Content is not static. The platform uses AI to analyze the semantic structure of the text:
+- **Semantic Extraction**: Uses Groq Cloud (LLM) to identify nouns, verbs, adjectives, and complex phrases.
+- **Dynamic Translation**: Uses Sarvam AI to translate specific semantic groups.
+- **Level Adjustment**: Based on user performance and feedback, the "percentage" of translated content increases or decreases (e.g., translating only 10% of nouns vs. 85% of complex clauses).
+
+### 3. Periodic Microsurveys
+To validate the behavioral data, the system prompts users with brief microsurveys. These surveys capture the user's subjective state (e.g., "Are you feeling frustrated?", "Are you focused?"), providing a "ground truth" for the machine learning pipeline.
+
+### 4. Data Collection for Machine Learning
+Every session is logged into a structured CSV format in the `cognitive_data/` directory. These logs include:
+- Word-level timestamps and durations.
+- Navigation patterns (Forward/Backward).
+- Difficulty levels at each point in time.
+- Corresponding microsurvey responses.
+This data is designed for training predictive models to automate cognitive state detection.
+
+### 5. Multi-Language Support
+The platform currently supports translations from English into regional languages like Hindi and Kannada, leveraging high-performance neural machine translation APIs.
+
+## Technical Architecture
+
+### Frontend & Backend
+- **Next.js 16 (App Router)**: Provides a robust, full-stack framework for the dashboard and API routes.
+- **React 19**: Utilizes modern hooks for complex state management (tracking word timings, managing survey states).
+- **Tailwind CSS 4**: For a modern, responsive, and "premium" aesthetic.
+- **Framer Motion**: For smooth transitions and micro-animations that enhance the user experience.
+
+### AI & NLP Integrations
+- **Groq Cloud (Groq-SDK)**: Powering high-speed semantic analysis and text extraction.
+- **Sarvam AI**: Providing accurate and contextual translations for specific text chunks.
+- **Compromise.js**: Used for basic NLP tasks like tokenization and normalization.
+
+## Workflow
+1. **Content Input**: User pastes text they want to learn.
+2. **Analysis Phase**: The system extracts semantic groups and pre-computes translations for different difficulty levels.
+3. **Interactive Reading**: User reads word-by-word using keyboard controls.
+4. **Adaptive Response**: If a user shows signs of struggle (long pauses or many regressions), the system might trigger a survey or automatically lower the difficulty.
+5. **Session Completion**: All behavioral and survey data is saved for future analysis and ML training.
+
+## Conclusion
+This platform represents a frontier in "EdTech" where AI doesn't just provide content, but understands the *learner's state* to provide the most effective pedagogical experience possible.

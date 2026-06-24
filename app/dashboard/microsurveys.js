@@ -93,7 +93,7 @@ function FocusFlowGame({ onComplete }) {
   );
 }
 
-export default function MicroSurvey({ isVisible, onResponse }) {
+export default function MicroSurvey({ isVisible, onResponse, predictedState }) {
   const [showGame, setShowGame] = useState(false);
   const options = ["mastery", "focused", "distracted", "frustrated", "overwhelmed"];
 
@@ -133,7 +133,13 @@ export default function MicroSurvey({ isVisible, onResponse }) {
               <h2 className="text-3xl font-black text-white mb-2 text-center tracking-tight">
                 Micro <span className="text-[#d63384]">Check-in</span>
               </h2>
-              <p className="text-gray-400 text-center mb-10 font-medium text-sm">How is your learning journey going?</p>
+              <p className="text-gray-400 text-center mb-10 font-medium text-sm">
+                {predictedState ? (
+                  <>Model suggested you might be <span className="text-[#FFD700] font-bold text-lg uppercase">{predictedState}</span>. Are you {predictedState}?</>
+                ) : (
+                  "How is your learning journey going?"
+                )}
+              </p>
 
               <div className="grid grid-cols-1 gap-3">
                 {options.map((option) => (

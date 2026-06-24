@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import Link from "next/link";
-import { Play, Pause, RotateCcw, Languages, Loader2 } from "lucide-react";
+import { Play, Pause, RotateCcw, Languages, Loader2, BrainCircuit } from "lucide-react";
 import MicroSurvey from "./microsurveys";
 
 export default function Dashboard() {
@@ -28,6 +28,8 @@ export default function Dashboard() {
   const timerRef = useRef(null);
   const microSurveyTimerRef = useRef(null);
   const [showMicroSurvey, setShowMicroSurvey] = useState(false);
+  const [predictedState, setPredictedState] = useState(null);
+  const [selectedModel, setSelectedModel] = useState("randomforest");
   const [microSurveyResponses, setMicroSurveyResponses] = useState([]);
   const [isPausedManually, setIsPausedManually] = useState(false);
   const [events, setEvents] = useState([]); // replaces wordTimings for ML
@@ -545,15 +547,31 @@ Every word you read brings you closer to fluency.`;
   useEffect(() => {
     let timer;
     if (isTranslating && !isFinished && !showMicroSurvey && !isPausedManually) {
-      timer = setTimeout(() => {
-        setShowMicroSurvey(true);
+      timer = setTimeout(async () => {
         setIsTranslating(false);
+        try {
+          // Fetch prediction from backend using the current session events
+          const backendUrl = process.env.NEXT_PUBLIC_BACKEND_URL || "https://backend-cognitive.onrender.com";
+          const response = await fetch(`${backendUrl}/predict`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({ events, modelType: selectedModel }),
+          });
+          const data = await response.json();
+          setPredictedState(data.predictedState || "focused");
+        } catch (error) {
+          console.error("Failed to predict cognitive state:", error);
+          setPredictedState("focused"); // Fallback
+        }
+        setShowMicroSurvey(true);
       }, 10000);
     }
     return () => {
       if (timer) clearTimeout(timer);
     };
-  }, [isTranslating, isFinished, showMicroSurvey, isPausedManually]);
+  }, [isTranslating, isFinished, showMicroSurvey, isPausedManually, events]);
 
   const translatedLines = fullTranslatedText ? fullTranslatedText.split("\n").filter(l => l.trim()) : [];
 
@@ -666,11 +684,11 @@ Every word you read brings you closer to fluency.`;
         alt="Background"
         className="absolute inset-0 w-full h-full object-cover opacity-25 mix-blend-screen pointer-events-none z-0"
       />
-      <div className="max-w-5xl w-full mb-6 flex justify-between items-center relative z-10">
-        <Link href="/" className="text-textSecondary hover:text-accent-primary transition-colors">
+      <div className="max-w-6xl w-full mb-6 flex justify-between items-center relative z-10">
+        <Link href="/" className="text-textSecondary hover:text-accent-primary transition-colors whitespace-nowrap">
           ← Back to Home
         </Link>
-        <div className="flex gap-3 flex-wrap items-center">
+        <div className="flex gap-2 flex-wrap items-center justify-end">
           <button
             onClick={startTranslating}
             disabled={isTranslating || !hasContent || isTranslatingContent}
@@ -726,6 +744,22 @@ Every word you read brings you closer to fluency.`;
               <option value="kn-IN" className="bg-[#1a1a1a]">Kannada</option>
             </select>
           </div>
+          <div className="flex items-center gap-2 px-1 bg-bg-secondary/50 border border-accent-primary/20 rounded-lg backdrop-blur-sm">
+            <BrainCircuit size={18} className="ml-2 text-accent-primary" />
+            <select
+              value={selectedModel}
+              onChange={(e) => setSelectedModel(e.target.value)}
+              className="bg-transparent text-textPrimary py-2 px-1 outline-none cursor-pointer text-sm"
+              disabled={isTranslating || isTranslatingContent}
+            >
+              <option value="randomforest" className="bg-[#1a1a1a]">Random Forest</option>
+              <option value="xgboost" className="bg-[#1a1a1a]">XGBoost</option>
+              <option value="lightgbm" className="bg-[#1a1a1a]">LightGBM</option>
+              <option value="logisticregression" className="bg-[#1a1a1a]">Logistic Regression</option>
+              <option value="mlp" className="bg-[#1a1a1a]">MLP</option>
+              <option value="gru" className="bg-[#1a1a1a]">GRU</option>
+            </select>
+          </div>
           <button
             onClick={() => setIsEditing(!isEditing)}
             disabled={isTranslating || isTranslatingContent}
@@ -735,7 +769,7 @@ Every word you read brings you closer to fluency.`;
           </button>
         </div>
       </div>
-      <div className="max-w-5xl w-full mb-4 text-sm text-textSecondary flex flex-wrap justify-end gap-4 relative z-10">
+      <div className="max-w-6xl w-full mb-4 text-sm text-textSecondary flex flex-wrap justify-end gap-4 relative z-10">
         {hasContent && (
           <>
             <span>Total words: <strong>{totalWords}</strong></span>
@@ -745,7 +779,7 @@ Every word you read brings you closer to fluency.`;
         )}
       </div>
 
-      <div className="max-w-5xl w-full relative z-10">
+      <div className="max-w-6xl w-full relative z-10">
         <div className="glass-panel rounded-2xl p-8 border border-accent-primary/20 shadow-2xl">
           {isEditing ? (
             <textarea
@@ -803,7 +837,7 @@ Every word you read brings you closer to fluency.`;
       </div>
 
 
-      <MicroSurvey isVisible={showMicroSurvey} onResponse={handleMicroSurveyResponse} />
+      <MicroSurvey isVisible={showMicroSurvey} onResponse={handleMicroSurveyResponse} predictedState={predictedState} />
     </div>
   );
 }
